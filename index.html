@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV直播源监控 | 自动更新每4小时</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js"></script>
+    <script>LA.init({id:"3NGg3QcrPGDkrBIP",ck:"3NGg3QcrPGDkrBIP",autoTrack:true})</script>
+    <style>
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .copy-btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">📡 IPTV直播源监控</h1>
+            <p class="text-gray-600">节目源每4小时自动更新 | 实时筛选 & 一键复制链接</p>
+        </header>
+
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6 fade-in">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="flex flex-col md:flex-row gap-4 md:col-span-2">
+                    <select id="formatFilter" class="w-full md:w-48 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                        <option value="m3u" selected>M3U 格式</option>
+                        <option value="m3u8">M3U8 格式</option>
+                    </select>
+                    <select id="categoryFilter" class="w-full md:w-56 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                        <option value="">📁 所有分类</option>
+                    </select>
+                    <div class="flex flex-1 gap-3">
+                        <div class="relative flex-1">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                <i class="fa fa-search"></i>
+                            </span>
+                            <input type="text" id="searchInput" placeholder="🔍 搜索频道名称..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                        </div>
+                        <button onclick="loadData()" class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors whitespace-nowrap flex items-center gap-2">
+                            <i class="fa fa-refresh"></i> 刷新
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-4 md:col-span-2 text-sm text-gray-600">
+                    <div class="flex items-center gap-2">
+                        <i class="fa fa-clock-o text-blue-500"></i>
+                        <span>当前时间：<span id="currentTime" class="font-medium text-blue-600">加载中...</span></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i class="fa fa-history text-green-500"></i>
+                        <span>数据版本：<span id="githubUpdateTime" class="font-medium text-green-600">加载中...</span></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i class="fa fa-list text-purple-500"></i>
+                        <span>频道总数：<span id="channelCount" class="font-medium text-purple-600">-</span></span>
+                    </div>
+                    <a href="https://github.com/hello-github-ui/Collect-IPTV" target="_blank" class="ml-auto flex items-center gap-1 hover:text-blue-600 transition-colors">
+                        <i class="fa fa-github"></i> GitHub项目 <i class="fa fa-external-link"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingTip" class="bg-white rounded-lg shadow-sm p-8 text-center mb-6">
+            <div class="inline-block w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+            <p class="text-gray-600">正在加载最新的直播源数据...</p>
+        </div>
+
+        <div id="emptyTip" class="bg-white rounded-lg shadow-sm p-8 text-center mb-6 hidden">
+            <i class="fa fa-inbox text-4xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500">暂无匹配的频道数据</p>
+        </div>
+
+        <div id="errorTip" class="bg-red-50 border border-red-200 rounded-lg p-6 mb-6 hidden">
+            <div class="flex items-start gap-3">
+                <i class="fa fa-exclamation-circle text-red-500 text-xl mt-1"></i>
+                <div>
+                    <h3 class="font-medium text-red-800">数据加载失败</h3>
+                    <p id="errorMsg" class="text-sm text-red-700 mt-1">请稍后重试或检查网络连接</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="channelTable" class="bg-white rounded-lg shadow-sm overflow-hidden fade-in hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-16">#ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-24">台标</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">频道名称</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">分类</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="channelList" class="divide-y divide-gray-200 bg-white"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer class="mt-12 text-center text-sm text-gray-500">
+            <p>© 2026 Collect-IPTV | 数据每4小时自动更新</p>
+        </footer>
+    </div>
+
+    <script>
+        const README_URL = 'https://raw.githubusercontent.com/hello-github-ui/Collect-IPTV/refs/heads/master/README.md';
+        let currentM3UUrl = '';
+        let allChannels = [];
+
+        const el = {
+            formatFilter: document.getElementById('formatFilter'),
+            categoryFilter: document.getElementById('categoryFilter'),
+            searchInput: document.getElementById('searchInput'),
+            currentTime: document.getElementById('currentTime'),
+            githubUpdateTime: document.getElementById('githubUpdateTime'),
+            channelCount: document.getElementById('channelCount'),
+            channelList: document.getElementById('channelList'),
+            loadingTip: document.getElementById('loadingTip'),
+            emptyTip: document.getElementById('emptyTip'),
+            channelTable: document.getElementById('channelTable'),
+            errorTip: document.getElementById('errorTip'),
+            errorMsg: document.getElementById('errorMsg')
+        };
+
+        function updateCurrentTime() {
+            const now = new Date();
+            el.currentTime.textContent = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+        }
+        setInterval(updateCurrentTime, 1000);
+        updateCurrentTime();
+
+        function copyToClipboard(text, button) {
+            const originalText = button.innerHTML;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                button.innerHTML = '<i class="fa fa-check"></i> 已复制';
+                button.classList.add('bg-green-500');
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.classList.remove('bg-green-500');
+                }, 1500);
+            }).catch(err => {
+                button.innerHTML = '<i class="fa fa-times"></i> 复制失败';
+                button.classList.add('bg-red-500');
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.classList.remove('bg-red-500');
+                }, 1500);
+            });
+        }
+
+        // --- 核心更新：引入范明明台标库并实现智能回退 ---
+        function getLogoHtml(channel) {
+            // 基础清理：去掉频道名中自带的如 (测试)、[高清]、-HD 等后缀，增加匹配率
+            const cleanName = channel.name.replace(/\[.*?\]|\(.*?\)|-FHD|-HD| FHD| HD| 4K| 8K/gi, '').trim();
+            // 针对范明明库优化的 CCTV 名称规范 (如将 CCTV-1 转换为 CCTV1)
+            const cctvName = cleanName.replace(/CCTV-(\d+.*)/i, 'CCTV$1');
+
+            const fanmingUrlClean = `https://raw.githubusercontent.com/fanmingming/live/refs/heads/main/tv/${encodeURIComponent(cleanName)}.png`;
+            const fanmingUrlCctv = `https://raw.githubusercontent.com/fanmingming/live/refs/heads/main/tv/${encodeURIComponent(cctvName)}.png`;
+
+            // 初始请求地址：如果源文件带 tvg-logo 则优先用源的，否则直接用优化的范明明链接
+            const initialSrc = channel.logo || fanmingUrlCctv;
+
+            // onerror 触发容错机制：
+            // 第一步失败 -> 尝试范明明的规范化 CCTV 链接
+            // 第二步失败 -> 尝试范明明的纯净版名称链接
+            // 全部失败   -> 渲染"无图标"纯文本
+            return `<img 
+                src="${initialSrc}" 
+                loading="lazy"
+                alt="logo" 
+                class="h-8 max-w-[64px] object-contain rounded bg-gray-100/50 p-0.5" 
+                onerror="
+                    if (!this.dataset.retry1) {
+                        this.dataset.retry1 = '1';
+                        this.src = '${fanmingUrlCctv}';
+                    } else if (!this.dataset.retry2) {
+                        this.dataset.retry2 = '1';
+                        this.src = '${fanmingUrlClean}';
+                    } else {
+                        this.onerror = null;
+                        this.outerHTML = '<span class=\\'text-xs text-gray-400\\'>无</span>';
+                    }
+                "
+            >`;
+        }
+
+        function renderChannels(channels) {
+            el.channelList.innerHTML = '';
+            el.channelCount.textContent = channels.length;
+
+            if (channels.length === 0) {
+                el.channelTable.classList.add('hidden');
+                el.emptyTip.classList.remove('hidden');
+                return;
+            }
+
+            el.emptyTip.classList.add('hidden');
+            el.channelTable.classList.remove('hidden');
+            
+            channels.forEach((channel, index) => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition-colors';
+
+                const idCell = document.createElement('td');
+                idCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                idCell.textContent = String(index + 1);
+
+                const logoCell = document.createElement('td');
+                logoCell.className = 'px-6 py-4 whitespace-nowrap';
+                logoCell.innerHTML = getLogoHtml(channel);
+
+                const nameCell = document.createElement('td');
+                nameCell.className = 'px-6 py-4 text-sm font-medium text-gray-900';
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'block max-w-[18rem] md:max-w-[30rem] truncate';
+                nameSpan.title = channel.name || '未知频道';
+                nameSpan.textContent = channel.name || '未知频道';
+                nameCell.appendChild(nameSpan);
+
+                const categoryCell = document.createElement('td');
+                categoryCell.className = 'px-6 py-4 whitespace-nowrap text-sm';
+                const categorySpan = document.createElement('span');
+                categorySpan.className = 'text-purple-600';
+                categorySpan.textContent = channel.category || '未分类';
+                categoryCell.appendChild(categorySpan);
+
+                const actionCell = document.createElement('td');
+                actionCell.className = 'px-6 py-4 whitespace-nowrap text-sm';
+                const copyButton = document.createElement('button');
+                copyButton.className = 'copy-btn text-blue-600 hover:text-blue-800 cursor-pointer bg-gray-100 px-3 py-1.5 rounded hover:bg-gray-200 transition-colors flex items-center gap-1';
+                copyButton.innerHTML = '<i class="fa fa-copy"></i> 复制链接';
+                copyButton.addEventListener('click', () => copyToClipboard(channel.url || '', copyButton));
+                if (!channel.url) {
+                    copyButton.disabled = true;
+                    copyButton.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+                actionCell.appendChild(copyButton);
+
+                row.appendChild(idCell);
+                row.appendChild(logoCell);
+                row.appendChild(nameCell);
+                row.appendChild(categoryCell);
+                row.appendChild(actionCell);
+                el.channelList.appendChild(row);
+            });
+        }
+
+        function parseM3UContent(content) {
+            const channels = [];
+            let currentChannel = {};
+            let lastCategory = '未分类'; 
+
+            content.split(/\r?\n/).forEach(line => {
+                line = line.trim();
+                if (!line) return;
+
+                if (line.startsWith('#EXTINF:')) {
+                    const nameMatch = line.match(/,(.*)$/);
+                    
+                    const groupMatch = line.match(/(?:group-title|tvg-group)="([^"]+)"/) || 
+                                       line.match(/(?:group-title|tvg-group)='([^']+)'/) ||
+                                       line.match(/(?:group-title|tvg-group)=([^ ,]+)/);
+                    
+                    if (groupMatch && groupMatch[1].trim()) {
+                        lastCategory = groupMatch[1].trim(); 
+                    }
+                    
+                    // 提取原始 tvg-logo
+                    const logoMatch = line.match(/tvg-logo="([^"]+)"/) || line.match(/tvg-logo='([^']+)'/);
+                    
+                    currentChannel = {
+                        name: nameMatch ? nameMatch[1].trim() : '未知频道',
+                        category: lastCategory,
+                        logo: logoMatch ? logoMatch[1].trim() : '', 
+                        url: ''
+                    };
+                } 
+                else if (line.startsWith('#EXTGRP:')) {
+                    lastCategory = line.replace('#EXTGRP:', '').trim();
+                    if (currentChannel.name) {
+                        currentChannel.category = lastCategory;
+                    }
+                }
+                else if (line.startsWith('http') || line.startsWith('rtmp') || line.startsWith('mms') || line.startsWith('p3p')) {
+                    currentChannel.url = line.trim();
+                    if (currentChannel.name) {
+                        channels.push({...currentChannel});
+                    }
+                    currentChannel = {}; 
+                }
+            });
+            return channels;
+        }
+
+		function extractUrlFromReadme(readmeText, format) {
+			const regexList = format === 'm3u'
+				? [
+					/\s*\[.*?\]\((https:\/\/[^)]+\.m3u(?:\?[^)]*)?)\)/i,
+					/\s*\[.*?\]\((https:\/\/[^)]+\.m3u(?:\?[^)]*)?)\)/i
+				  ]
+				: [
+					/\s*\[.*?\]\((https:\/\/[^)]+\.m3u8(?:\?[^)]*)?)\)/i,
+					/\s*\[.*?\]\((https:\/\/[^)]+\.m3u8(?:\?[^)]*)?)\)/i
+				  ];
+
+			for (const regex of regexList) {
+				const match = readmeText.match(regex);
+				if (match) return match[1];
+			}
+			throw new Error(`未找到 ${format.toUpperCase()} 文件链接，请检查 README 中的标记`);
+		}
+
+        let filterDebounceTimer;
+        function filterChannels() {
+            clearTimeout(filterDebounceTimer);
+            filterDebounceTimer = setTimeout(() => {
+                const searchText = el.searchInput.value.toLowerCase().trim();
+                const selectedCategory = el.categoryFilter.value;
+
+                const filtered = allChannels.filter(channel => {
+                    const nameMatch = channel.name.toLowerCase().includes(searchText);
+                    const categoryMatch = selectedCategory ? channel.category === selectedCategory : true;
+                    return nameMatch && categoryMatch;
+                });
+                renderChannels(filtered);
+            }, 300);
+        }
+
+        async function loadData() {
+            allChannels = [];
+            renderChannels([]);
+            el.githubUpdateTime.textContent = '加载中...';
+            el.loadingTip.classList.remove('hidden');
+            el.errorTip.classList.add('hidden');
+            el.emptyTip.classList.add('hidden');
+            el.channelTable.classList.add('hidden');
+
+            try {
+                const readmeRes = await fetch(README_URL);
+                if (!readmeRes.ok) throw new Error(`获取 README 失败：${readmeRes.status}`);
+                const readmeText = await readmeRes.text();
+
+                const timeMatch = readmeText.match(/\s*(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
+                if (timeMatch) el.githubUpdateTime.textContent = timeMatch[1];
+
+                const selectedFormat = el.formatFilter.value;
+                currentM3UUrl = extractUrlFromReadme(readmeText, selectedFormat);
+
+                const m3uRes = await fetch(currentM3UUrl);
+                if (!m3uRes.ok) throw new Error(`获取 ${selectedFormat.toUpperCase()} 文件失败：${m3uRes.status}`);
+                const m3uContent = await m3uRes.text();
+
+                allChannels = parseM3UContent(m3uContent);
+                
+                const categories = [...new Set(allChannels.map(c => c.category))].sort();
+                el.categoryFilter.innerHTML = `
+                    <option value="">📁 所有分类</option>
+                    ${categories.map(c => `<option value="${c}">${c}</option>`).join('')}
+                `;
+
+                renderChannels(allChannels);
+
+            } catch (error) {
+                console.error('加载失败:', error);
+                el.errorMsg.textContent = error.message || '未知错误，请稍后重试';
+                el.errorTip.classList.remove('hidden');
+                el.channelCount.textContent = '-';
+            } finally {
+                el.loadingTip.classList.add('hidden');
+            }
+        }
+
+        el.searchInput.addEventListener('input', filterChannels);
+        el.categoryFilter.addEventListener('change', filterChannels);
+        el.formatFilter.addEventListener('change', loadData);
+
+        window.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
