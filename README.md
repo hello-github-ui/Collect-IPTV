@@ -91,7 +91,7 @@ https://hello-github-ui.github.io/Collect-IPTV/
 
 ---
 ## 💡 使用说明
-1. 点击上方「下载 M3U/M3U8 文件」获取最新节目源
+1. 点击上方「下载 best_sorted.m3u 或者 best_sorted.m38u  M3U/M3U8 文件」获取最新节目源
 2. 将文件导入支持 IPTV 的播放器（如 Kodi、PotPlayer、Perfect Player 等）
 3. 节目源每 4 小时自动更新，建议定期重新下载
 
