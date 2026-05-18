@@ -69,7 +69,7 @@ https://hello-github-ui.github.io/Collect-IPTV/
      - Root Directory: 保持为 `.`
      - Output Directory: 设置为 `.github/workflows`
      - Install Command: 留空
-     - Build Command: 留空
+     - Build Command: 设置为 `cp best_sorted.m3u best_sorted.m3u8 .github/workflows/`
    
 3. **部署**
    - 点击 "Deploy" 开始部署
@@ -85,15 +85,15 @@ https://hello-github-ui.github.io/Collect-IPTV/
 
 ---
 ## 🔗Generated File Link
-&lt;!-- Generated File Link --&gt; [View Generated File](https://raw.githubusercontent.com/hello-github-ui/Collect-IPTV/refs/heads/master/best_sorted.m3u)
+&lt;!-- Generated File Link M3U --&gt; [View M3U File](https://hello-github-ui.github.io/Collect-IPTV/best_sorted.m3u)
 
-&lt;!-- Generated File Link m3u8 --&gt; [View Generated File](https://raw.githubusercontent.com/hello-github-ui/Collect-IPTV/refs/heads/master/best_sorted.m3u8)
+&lt;!-- Generated File Link M3U8 --&gt; [View M3U8 File](https://hello-github-ui.github.io/Collect-IPTV/best_sorted.m3u8)
 
 ---
 ## 💡 使用说明
-1. 点击上方「下载 best_sorted.m3u 或者 best_sorted.m38u  M3U/M3U8 文件」获取最新节目源
-2. 将文件导入支持 IPTV 的播放器（如 Kodi、PotPlayer、Perfect Player 等）
-3. 节目源每 4 小时自动更新，建议定期重新下载
+1. 直接在播放器中订阅上方 `best_sorted.m3u` 或 `best_sorted.m3u8` 链接，即可获取最新节目源内容
+2. 也可以打开链接后保存文件，再导入支持 IPTV 的播放器（如 Kodi、PotPlayer、Perfect Player 等）
+3. 节目源每 4 小时自动更新，建议定期刷新订阅
 
 ---
 ## ⭐️Star History
