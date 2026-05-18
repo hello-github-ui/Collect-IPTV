@@ -23,11 +23,13 @@ jobs:
       run: echo "GET_TIME=$(date +'%Y-%m-%d %H:%M:%S CST')" >> $GITHUB_ENV
     - name: Update README.md with run time and file link
       run: |
-        file_link="https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref }}/best_sorted.m3u"  # 生成的文件是 best_sorted.m3u
-        file_link1="https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref }}/best_sorted.m3u8"  # 生成的文件是 best_sorted.m3u
-        sed -i "s|<!-- Last Run Time -->.*|<!-- Last Run Time --> ${GET_TIME}|" README.md
-        sed -i "s|<!-- Generated File Link M3U -->.*|<!-- Generated File Link M3U --> [View M3U File](${file_link})|" README.md
-        sed -i "s|<!-- Generated File Link M3U8 -->.*|<!-- Generated File Link M3U8 --> [View M3U8 File](${file_link1})|" README.md
+        repo_name="${GITHUB_REPOSITORY#*/}"
+        pages_base="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_name}"
+        file_link="${pages_base}/best_sorted.m3u"
+        file_link1="${pages_base}/best_sorted.m3u8"
+        sed -i "s|.*Last Run Time --\&gt;.*|\&lt;!-- Last Run Time --\&gt; ${GET_TIME}|" README.md
+        sed -i "s|.*Generated File Link M3U --\&gt;.*|\&lt;!-- Generated File Link M3U --\&gt; [View M3U File](${file_link})|" README.md
+        sed -i "s|.*Generated File Link M3U8 --\&gt;.*|\&lt;!-- Generated File Link M3U8 --\&gt; [View M3U8 File](${file_link1})|" README.md
     - name: Commit changes
       env:
         REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}

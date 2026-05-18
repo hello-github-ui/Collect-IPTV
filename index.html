@@ -59,13 +59,13 @@
                         <span>频道总数：<span id="channelCount" class="font-medium text-purple-600">-</span></span>
                     </div>
                     <div class="flex items-center gap-2 ml-auto">
-                        <span class="text-gray-500">API:</span>
-                        <a href="?api=m3u" target="_blank" class="text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                            <i class="fa fa-file-text-o"></i> /api/m3u
+                        <span class="text-gray-500">订阅:</span>
+                        <a href="best_sorted.m3u" target="_blank" class="text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                            <i class="fa fa-file-text-o"></i> best_sorted.m3u
                         </a>
                         <span class="text-gray-400">|</span>
-                        <a href="?api=m3u8" target="_blank" class="text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                            <i class="fa fa-file-text-o"></i> /api/m3u8
+                        <a href="best_sorted.m3u8" target="_blank" class="text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                            <i class="fa fa-file-text-o"></i> best_sorted.m3u8
                         </a>
                     </div>
                     <a href="https://github.com/hello-github-ui/Collect-IPTV" target="_blank" class="ml-4 flex items-center gap-1 hover:text-blue-600 transition-colors">
@@ -118,7 +118,10 @@
     </div>
 
     <script>
-        const README_URL = 'https://raw.githubusercontent.com/hello-github-ui/Collect-IPTV/refs/heads/master/README.md';
+        const PLAYLIST_FILES = {
+            m3u: 'best_sorted.m3u',
+            m3u8: 'best_sorted.m3u8'
+        };
         let currentM3UUrl = '';
         let allChannels = [];
 
@@ -335,67 +338,6 @@
             URL.revokeObjectURL(url);
         }
 
-        function extractUrlFromReadme(readmeText, format) {
-            const regexList = format === 'm3u'
-                ? [
-                    /\s*\[.*?\]\((https:\/\/[^)]+\.m3u(?:\?[^)]*)?)\)/i,
-                    /\s*\[.*?\]\((https:\/\/[^)]+\.m3u(?:\?[^)]*)?)\)/i
-                  ]
-                : [
-                    /\s*\[.*?\]\((https:\/\/[^)]+\.m3u8(?:\?[^)]*)?)\)/i,
-                    /\s*\[.*?\]\((https:\/\/[^)]+\.m3u8(?:\?[^)]*)?)\)/i
-                  ];
-
-            for (const regex of regexList) {
-                const match = readmeText.match(regex);
-                if (match) return match[1];
-            }
-            throw new Error(`未找到 ${format.toUpperCase()} 文件链接，请检查 README 中的标记`);
-        }
-
-        function getQueryParam(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(name);
-        }
-
-        async function handleApiRequest() {
-            const apiParam = getQueryParam('api');
-            if (!apiParam) return false;
-
-            const format = apiParam.toLowerCase();
-            if (format !== 'm3u' && format !== 'm3u8') return false;
-
-            try {
-                const readmeRes = await fetch(README_URL);
-                if (!readmeRes.ok) throw new Error('获取 README 失败');
-                const readmeText = await readmeRes.text();
-
-                const m3uUrl = extractUrlFromReadme(readmeText, format);
-                const m3uRes = await fetch(m3uUrl);
-                if (!m3uRes.ok) throw new Error(`获取 ${format.toUpperCase()} 文件失败`);
-                const m3uContent = await m3uRes.text();
-
-                const channels = parseM3UContent(m3uContent);
-                const outputContent = generateM3UContent(channels, format);
-
-                const blob = new Blob([outputContent], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `best_sorted.${format}`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-
-            } catch (error) {
-                console.error('API请求失败:', error);
-                document.body.innerHTML = `<pre>${error.message}</pre>`;
-            }
-
-            return true;
-        }
-
         let filterDebounceTimer;
         function filterChannels() {
             clearTimeout(filterDebounceTimer);
@@ -422,19 +364,15 @@
             el.channelTable.classList.add('hidden');
 
             try {
-                const readmeRes = await fetch(README_URL);
-                if (!readmeRes.ok) throw new Error(`获取 README 失败：${readmeRes.status}`);
-                const readmeText = await readmeRes.text();
-
-                const timeMatch = readmeText.match(/\s*(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
-                if (timeMatch) el.githubUpdateTime.textContent = timeMatch[1];
-
                 const selectedFormat = el.formatFilter.value;
-                currentM3UUrl = extractUrlFromReadme(readmeText, selectedFormat);
+                currentM3UUrl = PLAYLIST_FILES[selectedFormat];
 
                 const m3uRes = await fetch(currentM3UUrl);
                 if (!m3uRes.ok) throw new Error(`获取 ${selectedFormat.toUpperCase()} 文件失败：${m3uRes.status}`);
                 const m3uContent = await m3uRes.text();
+
+                const timeMatch = m3uContent.match(/^# Generated-Time:\s*(.+)$/m);
+                if (timeMatch) el.githubUpdateTime.textContent = timeMatch[1].trim();
 
                 allChannels = parseM3UContent(m3uContent);
                 
@@ -460,11 +398,7 @@
         el.categoryFilter.addEventListener('change', filterChannels);
         el.formatFilter.addEventListener('change', loadData);
 
-        handleApiRequest().then(isApiRequest => {
-            if (!isApiRequest) {
-                window.addEventListener('DOMContentLoaded', loadData);
-            }
-        });
+        window.addEventListener('DOMContentLoaded', loadData);
     </script>
 </body>
 </html>
